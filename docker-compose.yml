@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: qna_nest_app
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/usr/src/qna_nest_app
+      - /usr/src/qna_nest_app/node_modules
+      - ./sqlite.db:/usr/src/qna_nest_app/sqlite.db
+    environment:
+      - NODE_ENV=development
