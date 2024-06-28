@@ -55,7 +55,7 @@ describe('LikeService', () => {
         id: '1',
         title: 'Question',
         content: 'Content',
-        author: { ...user, id: '2' }, // Ensure author is different
+        author: { ...user, id: '2' },
         createdAt: new Date(),
         updatedAt: new Date(),
         answers: new Collection<Answer>(this),
@@ -185,9 +185,9 @@ describe('LikeService', () => {
       mockEntityManager.findOneOrFail.mockResolvedValue(answer);
 
       const findLikeSpy = jest.spyOn(likeService, 'findLike');
-      findLikeSpy.mockResolvedValue(null); // Initially no like exists
+      findLikeSpy.mockResolvedValue(null); 
 
-      const createLikeSpy = jest.spyOn(likeService, 'createLike'); // Spy on createLike
+      const createLikeSpy = jest.spyOn(likeService, 'createLike'); 
       createLikeSpy.mockReturnValue({
         id: '1',
         user,
@@ -241,18 +241,17 @@ describe('LikeService', () => {
 
       mockEntityManager.findOneOrFail.mockResolvedValue(answer);
 
-      // Spy directly on the findLike method and control its behavior
       const findLikeSpy = jest.spyOn(likeService, 'findLike');
-      findLikeSpy.mockResolvedValue(like); // Simulate an existing like
+      findLikeSpy.mockResolvedValue(like); 
 
-      mockEntityManager.removeAndFlush.mockResolvedValue(undefined); // Simulate successful removal
+      mockEntityManager.removeAndFlush.mockResolvedValue(undefined); 
 
       const result = await likeService.toggleLikeAnswer('1', user);
 
       expect(result).toEqual({ message: 'Answer like status toggled', liked: false });
       expect(mockEntityManager.findOneOrFail).toHaveBeenCalledWith(Answer, '1');
       expect(findLikeSpy).toHaveBeenCalledWith(answer, user);
-      expect(mockEntityManager.removeAndFlush).toHaveBeenCalledWith(like); // Ensure the like is removed
+      expect(mockEntityManager.removeAndFlush).toHaveBeenCalledWith(like); 
     });
 
     it('should throw an error if trying to like own answer', async () => {
