@@ -41,12 +41,12 @@ export class QuestionController {
     }
 
     @Get()
-    async findAll(): Promise<QuestionResponseDto[]> {
-        return this.questionService.findAll();
+    async findAllQuestions(): Promise<QuestionResponseDto[]> {
+        return this.questionService.findAllQuestions();
     }
 
     @Get(':id')
-    async findOne(@Param('id') id: string): Promise<QuestionResponseDto> {
-        return this.questionService.findOne(id);
+    async findOneQuestion(@Param('id') id: string): Promise<QuestionResponseDto> {
+        return this.questionService.findOneQuestion(id);
     }
 }

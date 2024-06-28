@@ -1,8 +1,9 @@
-import { Entity, PrimaryKey, Property, ManyToOne } from '@mikro-orm/core';
+import { Cascade, Collection, Entity, ManyToOne, OneToMany, PrimaryKey, Property } from '@mikro-orm/core';
 import { v4 as uuidv4 } from 'uuid';
-import { User } from '../../user/entities/user.entity';
-import { Question } from '../../question/entities/question.entity';
 import { TimestampsEntity } from '../../../common/entities/timestamps.entity';
+import { Like } from '../../like/entities/like.entity';
+import { Question } from '../../question/entities/question.entity';
+import { User } from '../../user/entities/user.entity';
 
 @Entity()
 export class Answer extends TimestampsEntity {
@@ -11,10 +12,13 @@ export class Answer extends TimestampsEntity {
 
     @Property()
     content: string;
-
-    @ManyToOne(() => User)
+  
+    @ManyToOne()
     author: User;
-
-    @ManyToOne(() => Question)
+  
+    @ManyToOne()
     question: Question;
+  
+    @OneToMany(() => Like, like => like.answer, { cascade: [Cascade.ALL], orphanRemoval: true })
+    likes = new Collection<Like>(this);
 }

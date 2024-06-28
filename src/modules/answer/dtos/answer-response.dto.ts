@@ -5,4 +5,5 @@ export class AnswerResponseDto {
     updatedAt: Date;
     authorId: string;
     questionId: string;
+    isLiked: boolean;
 }

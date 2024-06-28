@@ -11,15 +11,15 @@ import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { QuestionResponseDto } from './dtos/question-response.dto';
 
 describe('QuestionController', () => {
-  let controller: QuestionController;
-  let service: QuestionService;
+  let questionController: QuestionController;
+  let questionService: QuestionService;
 
   const mockQuestionService = {
     createQuestion: jest.fn(),
     updateQuestion: jest.fn(),
     deleteQuestion: jest.fn(),
-    findAll: jest.fn(),
-    findOne: jest.fn(),
+    findAllQuestions: jest.fn(),
+    findOneQuestion: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -38,26 +38,34 @@ describe('QuestionController', () => {
       .useValue({ canActivate: jest.fn().mockReturnValue(true) })
       .compile();
 
-    controller = module.get<QuestionController>(QuestionController);
-    service = module.get<QuestionService>(QuestionService);
+    questionController = module.get<QuestionController>(QuestionController);
+    questionService = module.get<QuestionService>(QuestionService);
   });
 
   it('should be defined', () => {
-    expect(controller).toBeDefined();
+    expect(questionController).toBeDefined();
   });
 
   describe('createQuestion', () => {
     it('should create a new question', async () => {
       const createQuestionDto: CreateQuestionDto = { title: 'Test Question', content: 'Test Content' };
       const user: User = { id: '1', name: 'Author', email: 'author@example.com', password: 'password', role: UserRole.USER, createdAt: new Date(), updatedAt: new Date() };
-      const questionResponseDto: QuestionResponseDto = { id: '1', title: 'Test Question', content: 'Test Content', createdAt: new Date(), updatedAt: new Date(), authorId: '1' };
+      const questionResponseDto: QuestionResponseDto = { 
+        id: '1', 
+        title: 'Test Question', 
+        content: 'Test Content', 
+        createdAt: new Date(), 
+        updatedAt: new Date(), 
+        authorId: '1',
+        isLiked: false,
+      };
 
-      jest.spyOn(service, 'createQuestion').mockResolvedValue(questionResponseDto);
+      jest.spyOn(questionService, 'createQuestion').mockResolvedValue(questionResponseDto);
 
-      const result = await controller.createQuestion(createQuestionDto, user);
+      const result = await questionController.createQuestion(createQuestionDto, user);
 
       expect(result).toEqual(questionResponseDto);
-      expect(service.createQuestion).toHaveBeenCalledWith(createQuestionDto, user);
+      expect(questionService.createQuestion).toHaveBeenCalledWith(createQuestionDto, user);
     });
   });
 
@@ -65,14 +73,22 @@ describe('QuestionController', () => {
     it('should update a question', async () => {
       const updateQuestionDto: UpdateQuestionDto = { id: '1', title: 'Updated Title', content: 'Updated Content' };
       const user: User = { id: '1', name: 'Author', email: 'author@example.com', password: 'password', role: UserRole.USER, createdAt: new Date(), updatedAt: new Date() };
-      const questionResponseDto: QuestionResponseDto = { id: '1', title: 'Updated Title', content: 'Updated Content', createdAt: new Date(), updatedAt: new Date(), authorId: '1' };
+      const questionResponseDto: QuestionResponseDto = { 
+        id: '1', 
+        title: 'Updated Title', 
+        content: 'Updated Content', 
+        createdAt: new Date(), 
+        updatedAt: new Date(), 
+        authorId: '1',
+        isLiked: false,
+      };
 
-      jest.spyOn(service, 'updateQuestion').mockResolvedValue(questionResponseDto);
+      jest.spyOn(questionService, 'updateQuestion').mockResolvedValue(questionResponseDto);
 
-      const result = await controller.updateQuestion(updateQuestionDto, user);
+      const result = await questionController.updateQuestion(updateQuestionDto, user);
 
       expect(result).toEqual(questionResponseDto);
-      expect(service.updateQuestion).toHaveBeenCalledWith({ ...updateQuestionDto, id: '1' }, user);
+      expect(questionService.updateQuestion).toHaveBeenCalledWith({ ...updateQuestionDto, id: '1' }, user);
     });
   });
 
@@ -80,56 +96,80 @@ describe('QuestionController', () => {
     it('should delete a question', async () => {
       const user: User = { id: '1', name: 'Author', email: 'author@example.com', password: 'password', role: UserRole.USER, createdAt: new Date(), updatedAt: new Date() };
 
-      jest.spyOn(service, 'deleteQuestion').mockResolvedValue();
+      jest.spyOn(questionService, 'deleteQuestion').mockResolvedValue();
 
-      await controller.deleteQuestion('1', user);
+      await questionController.deleteQuestion('1', user);
 
-      expect(service.deleteQuestion).toHaveBeenCalledWith('1', user);
+      expect(questionService.deleteQuestion).toHaveBeenCalledWith('1', user);
     });
 
     it('should throw ForbiddenException if user is not the author or admin', async () => {
       const user: User = { id: '2', name: 'Other User', email: 'other@example.com', password: 'password', role: UserRole.USER, createdAt: new Date(), updatedAt: new Date() };
 
-      jest.spyOn(service, 'deleteQuestion').mockImplementation(() => {
+      jest.spyOn(questionService, 'deleteQuestion').mockImplementation(() => {
         throw new ForbiddenException();
       });
 
-      await expect(controller.deleteQuestion('1', user)).rejects.toThrow(ForbiddenException);
+      await expect(questionController.deleteQuestion('1', user)).rejects.toThrow(ForbiddenException);
     });
   });
 
-  describe('findAll', () => {
+  describe('findAllQuestions', () => {
     it('should return an array of questions', async () => {
       const questions: QuestionResponseDto[] = [
-        { id: '1', title: 'Test Question 1', content: 'Test Content 1', createdAt: new Date(), updatedAt: new Date(), authorId: '1' },
-        { id: '2', title: 'Test Question 2', content: 'Test Content 2', createdAt: new Date(), updatedAt: new Date(), authorId: '1' },
+        { 
+          id: '1', 
+          title: 'Test Question 1', 
+          content: 'Test Content 1', 
+          createdAt: new Date(), 
+          updatedAt: new Date(), 
+          authorId: '1',
+          isLiked: false,
+        },
+        { 
+          id: '2', 
+          title: 'Test Question 2', 
+          content: 'Test Content 2', 
+          createdAt: new Date(), 
+          updatedAt: new Date(), 
+          authorId: '1',
+          isLiked: false,
+        },
       ];
 
-      jest.spyOn(service, 'findAll').mockResolvedValue(questions);
+      jest.spyOn(questionService, 'findAllQuestions').mockResolvedValue(questions);
 
-      const result = await controller.findAll();
+      const result = await questionController.findAllQuestions();
 
       expect(result).toEqual(questions);
-      expect(service.findAll).toHaveBeenCalled();
+      expect(questionService.findAllQuestions).toHaveBeenCalled();
     });
   });
 
-  describe('findOne', () => {
+  describe('findOneQuestion', () => {
     it('should return a single question', async () => {
-      const question: QuestionResponseDto = { id: '1', title: 'Test Question', content: 'Test Content', createdAt: new Date(), updatedAt: new Date(), authorId: '1' };
+      const question: QuestionResponseDto = { 
+        id: '1', 
+        title: 'Test Question', 
+        content: 'Test Content', 
+        createdAt: new Date(), 
+        updatedAt: new Date(), 
+        authorId: '1',
+        isLiked: false,
+      };
 
-      jest.spyOn(service, 'findOne').mockResolvedValue(question);
+      jest.spyOn(questionService, 'findOneQuestion').mockResolvedValue(question);
 
-      const result = await controller.findOne('1');
+      const result = await questionController.findOneQuestion('1');
 
       expect(result).toEqual(question);
-      expect(service.findOne).toHaveBeenCalledWith('1');
+      expect(questionService.findOneQuestion).toHaveBeenCalledWith('1');
     });
 
     it('should throw NotFoundException if question is not found', async () => {
-      jest.spyOn(service, 'findOne').mockRejectedValue(new NotFoundException());
+      jest.spyOn(questionService, 'findOneQuestion').mockRejectedValue(new NotFoundException());
 
-      await expect(controller.findOne('1')).rejects.toThrow(NotFoundException);
+      await expect(questionController.findOneQuestion('1')).rejects.toThrow(NotFoundException);
     });
   });
 });

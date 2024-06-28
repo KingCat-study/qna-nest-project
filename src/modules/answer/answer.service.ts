@@ -1,37 +1,30 @@
 import { EntityManager, EntityRepository } from '@mikro-orm/core';
 import { InjectRepository } from '@mikro-orm/nestjs';
 import { ForbiddenException, Injectable } from '@nestjs/common';
+import { LikeService } from '../like/like.service';
 import { Question } from '../question/entities/question.entity';
-import { UserRole } from '../user/entities/user-role.enum';
 import { User } from '../user/entities/user.entity';
 import { AnswerResponseDto } from './dtos/answer-response.dto';
 import { CreateAnswerDto } from './dtos/create-answer.dto';
 import { toAnswerResponseDto } from './dtos/dto.mapper';
 import { UpdateAnswerDto } from './dtos/update-answer.dto';
 import { Answer } from './entities/answer.entity';
+import { UserRole } from '../user/entities/user-role.enum';
 
 @Injectable()
 export class AnswerService {
     constructor(
         @InjectRepository(Answer)
         private readonly answerRepository: EntityRepository<Answer>,
-        @InjectRepository(Question) 
-        private readonly questionRepository: EntityRepository<Question>,
         private readonly em: EntityManager,
+        private readonly likeService: LikeService,
     ) { }
 
     async createAnswer(createAnswerDto: CreateAnswerDto, author: User): Promise<AnswerResponseDto> {
-        const question = await this.questionRepository.findOneOrFail(createAnswerDto.questionId);
+        const question = await this.em.findOneOrFail(Question, createAnswerDto.questionId);
         const answer = this.answerRepository.create({ content: createAnswerDto.content, author, question });
         await this.em.persistAndFlush(answer);
-        return toAnswerResponseDto(answer);
-        
-    }
-
-    private checkPermissions(answer: Answer, user: User, action: string): void {
-        if (answer.author.id !== user.id && user.role !== UserRole.ADMIN) {
-            throw new ForbiddenException(`You do not have permission to ${action} this answer`);
-        }
+        return toAnswerResponseDto(answer, false);
     }
 
     async updateAnswer(updateAnswerDto: UpdateAnswerDto, user: User): Promise<AnswerResponseDto> {
@@ -40,7 +33,13 @@ export class AnswerService {
 
         answer.content = updateAnswerDto.content;
         await this.em.persistAndFlush(answer);
-        return toAnswerResponseDto(answer);
+
+        let isLiked = false;
+        if (answer.author.id !== user.id) {
+            isLiked = await this.likeService.isAnswerLikedByUser(answer.id, user);
+        }
+
+        return toAnswerResponseDto(answer, isLiked);
     }
 
     async deleteAnswer(id: string, user: User): Promise<void> {
@@ -49,8 +48,17 @@ export class AnswerService {
         await this.em.removeAndFlush(answer);
     }
 
-    async findAllAnswersByQuestion(questionId: string): Promise<AnswerResponseDto[]> {
+    async findAllAnswersByQuestion(questionId: string, user?: User): Promise<AnswerResponseDto[]> {
         const answers = await this.answerRepository.find({ question: { id: questionId } });
-        return answers.map(toAnswerResponseDto);
+        return Promise.all(answers.map(async (answer) => {
+            const isLiked = user ? await this.likeService.isAnswerLikedByUser(answer.id, user) : false;
+            return toAnswerResponseDto(answer, isLiked);
+        }));
+    }
+
+    private checkPermissions(answer: Answer, user: User, action: string): void {
+        if (answer.author.id !== user.id && user.role !== UserRole.ADMIN) {
+            throw new ForbiddenException(`You do not have permission to ${action} this answer`);
+        }
     }
 }

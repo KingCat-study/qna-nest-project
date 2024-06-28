@@ -1,7 +1,7 @@
 import { Answer } from '../entities/answer.entity';
 import { AnswerResponseDto } from './answer-response.dto';
 
-export function toAnswerResponseDto(answer: Answer): AnswerResponseDto {
+export function toAnswerResponseDto(answer: Answer, isLiked: boolean): AnswerResponseDto {
     return {
         id: answer.id,
         content: answer.content,
@@ -9,5 +9,6 @@ export function toAnswerResponseDto(answer: Answer): AnswerResponseDto {
         updatedAt: answer.updatedAt,
         authorId: answer.author.id,
         questionId: answer.question.id,
+        isLiked,
     };
 }
