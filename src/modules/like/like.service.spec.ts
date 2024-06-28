@@ -79,7 +79,7 @@ describe('LikeService', () => {
 
       expect(result).toEqual({ message: 'Question like status toggled', liked: true });
       expect(mockEntityManager.findOneOrFail).toHaveBeenCalledWith(Question, '1');
-      expect(likeService.findLike).toHaveBeenCalledWith(question, user); // Check findLike called correctly
+      expect(likeService.findLike).toHaveBeenCalledWith(question, user);
       expect(likeService.createLike).toHaveBeenCalledWith(question, user);
       expect(mockEntityManager.persistAndFlush).toHaveBeenCalledWith(like);
     });
