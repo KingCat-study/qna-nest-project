@@ -1,5 +1,5 @@
 export class UpdateQuestionDto {
     id: string;
-    title?: string;
-    content?: string;
+    title: string;
+    content: string;
   }

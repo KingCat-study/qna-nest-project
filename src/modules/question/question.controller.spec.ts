@@ -69,7 +69,7 @@ describe('QuestionController', () => {
 
       jest.spyOn(service, 'updateQuestion').mockResolvedValue(questionResponseDto);
 
-      const result = await controller.updateQuestion('1', updateQuestionDto, user);
+      const result = await controller.updateQuestion(updateQuestionDto, user);
 
       expect(result).toEqual(questionResponseDto);
       expect(service.updateQuestion).toHaveBeenCalledWith({ ...updateQuestionDto, id: '1' }, user);

@@ -23,15 +23,14 @@ export class QuestionController {
         return this.questionService.createQuestion(createQuestionDto, user);
     }
 
-    @Patch(':id')
+    @Patch()
     @UseGuards(AuthGuard, RolesGuard)
     @Roles(UserRole.ADMIN, UserRole.USER)
     async updateQuestion(
-        @Param('id') id: string,
         @Body() updateQuestionDto: UpdateQuestionDto,
         @GetUser() user: User,
     ): Promise<QuestionResponseDto> {
-        return this.questionService.updateQuestion({ ...updateQuestionDto, id }, user);
+        return this.questionService.updateQuestion(updateQuestionDto, user);
     }
 
     @Delete(':id')
