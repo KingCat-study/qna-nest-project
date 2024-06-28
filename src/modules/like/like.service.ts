@@ -37,7 +37,7 @@ export class LikeService {
         return this.createLikeResponseDto('Answer', liked);
     }
 
-    private async toggleLike(target: Question | Answer, user: User): Promise<boolean> {
+    async toggleLike(target: Question | Answer, user: User): Promise<boolean> {
         const like = await this.findLike(target, user);
 
         if (like) {
@@ -51,15 +51,15 @@ export class LikeService {
         }
     }
 
-    private async findLike(target: Question | Answer, user: User): Promise<Like | null> {
+    async findLike(target: Question | Answer, user: User): Promise<Like | null> {
         if (target instanceof Question) {
             return this.likeRepository.findOne({ question: target, user });
-        } else {
+        } else { // 이 경우 target은 Answer 타입임이 보장됩니다.
             return this.likeRepository.findOne({ answer: target, user });
         }
     }
 
-    private createLike(target: Question | Answer, user: User): Like {
+    createLike(target: Question | Answer, user: User): Like {
         if (target instanceof Question) {
             return this.likeRepository.create({ user, question: target });
         } else {
@@ -67,14 +67,14 @@ export class LikeService {
         }
     }
 
-    private checkSelfLike(target: Question | Answer, user: User): void {
+    checkSelfLike(target: Question | Answer, user: User): void {
         if (target.author.id === user.id) {
             const targetType = target instanceof Question ? 'question' : 'answer';
             throw new BadRequestException(`You cannot like your own ${targetType}.`);
         }
     }
 
-    private createLikeResponseDto(type: 'Question' | 'Answer', liked: boolean): LikeResponseDto {
+    createLikeResponseDto(type: 'Question' | 'Answer', liked: boolean): LikeResponseDto {
         return { message: `${type} like status toggled`, liked };
     }
 }
