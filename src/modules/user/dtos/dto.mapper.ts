@@ -6,6 +6,7 @@ export function toCreateUserResponseDto(user: User): CreateUserResponseDto {
     return {
         name: user.name,
         email: user.email,
+        role: user.role,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
     };
@@ -16,6 +17,7 @@ export function toFindAllUsersResponseDto(user: User): FindAllUsersResponseDto {
         id: user.id,
         name: user.name,
         email: user.email,
+        role: user.role,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
     };

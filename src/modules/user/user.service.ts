@@ -17,11 +17,11 @@ export class UserService {
     ) { }
 
     async createUser(createUserDto: CreateUserDto): Promise<CreateUserResponseDto> {
-        const { name, email, password } = createUserDto;
+        const { name, email, password, role } = createUserDto;
         await this.ensureUniqueEmail(email);
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        const user = this.userRepository.create({ name, email, password: hashedPassword });
+        const user = this.userRepository.create({ name, email, password: hashedPassword, role });
         await this.em.persistAndFlush(user);
         
         return toCreateUserResponseDto(user);
