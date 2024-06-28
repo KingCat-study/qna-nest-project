@@ -1,10 +1,9 @@
-import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
-import { UserModule } from './modules/user/user.module';
-import { AuthModule } from './modules/auth/auth.module';
+import { Module } from '@nestjs/common';
 import mikroOrmConfig from './mikro-orm.config';
+import { AuthModule } from './modules/auth/auth.module';
+import { QuestionModule } from './modules/question/question.module';
+import { UserModule } from './modules/user/user.module';
 
 
 @Module({
@@ -12,8 +11,9 @@ import mikroOrmConfig from './mikro-orm.config';
     MikroOrmModule.forRoot(mikroOrmConfig),
     UserModule,
     AuthModule,
+    QuestionModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [],
+  providers: [],
 })
 export class AppModule {}
