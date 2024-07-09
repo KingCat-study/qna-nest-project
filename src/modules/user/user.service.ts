@@ -1,7 +1,7 @@
-import { EntityManager, EntityRepository } from '@mikro-orm/core';
 import { InjectRepository } from '@mikro-orm/nestjs';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { ExtendedEntityRepository } from '../../common/repositories/extended-entity-repository';
 import { CreateUserDto } from './dtos/create-request.dto';
 import { CreateUserResponseDto } from './dtos/create-response.dto';
 import { toCreateUserResponseDto, toFindAllUsersResponseDto } from './dtos/dto.mapper';
@@ -12,8 +12,7 @@ import { User } from './entities/user.entity';
 export class UserService {
     constructor(
         @InjectRepository(User)
-        private readonly userRepository: EntityRepository<User>,
-        private readonly em: EntityManager,
+        private readonly userRepository: ExtendedEntityRepository<User>,
     ) { }
 
     async createUser(createUserDto: CreateUserDto): Promise<CreateUserResponseDto> {
@@ -22,8 +21,7 @@ export class UserService {
 
         const hashedPassword = await bcrypt.hash(password, 10);
         const user = this.userRepository.create({ name, email, password: hashedPassword, role });
-        await this.em.persistAndFlush(user);
-        
+        await this.userRepository.persistAndFlush(user);
         return toCreateUserResponseDto(user);
     }
 
@@ -45,6 +43,6 @@ export class UserService {
 
     async deleteUser(id: string): Promise<void> {
         const user = await this.userRepository.findOneOrFail(id);
-        await this.em.removeAndFlush(user)
+        await this.userRepository.removeAndFlush(user)
     }
 }

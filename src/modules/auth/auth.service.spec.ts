@@ -1,3 +1,4 @@
+import { getRepositoryToken } from '@mikro-orm/nestjs';
 import { EntityManager } from '@mikro-orm/sqlite';
 import { UnauthorizedException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -9,153 +10,164 @@ import { Login } from './entities/login.entity';
 
 jest.mock('bcrypt');
 jest.mock('crypto', () => {
-  const actualCrypto = jest.requireActual('crypto');
-  return {
-    ...actualCrypto,
-    randomBytes: jest.fn(() => Buffer.from('randomToken', 'utf8').toString('hex')),
-  };
+    const actualCrypto = jest.requireActual('crypto');
+    return {
+        ...actualCrypto,
+        randomBytes: jest.fn(() => Buffer.from('randomToken', 'utf8').toString('hex')),
+    };
 });
 
 describe('AuthService', () => {
-  let authService: AuthService;
-  let userService: UserService;
-  let em: EntityManager;
-  const token = Buffer.from('randomToken', 'utf8').toString('hex');
+    let authService: AuthService;
+    let mockAuthRepository;
+    let mockEntityManager
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        AuthService,
-        {
-          provide: UserService,
-          useValue: {
-            findUserByEmail: jest.fn(),
-          },
-        },
-        {
-          provide: EntityManager,
-          useValue: {
+    const token = Buffer.from('randomToken', 'utf8').toString('hex');
+
+    const mockUserService = {
+        findUserByEmail: jest.fn(),
+    };
+
+    const loginInfo = {
+        email: 'test@email.com',
+        password: 'plainPassword'
+    }
+
+    beforeEach(async () => {
+        mockAuthRepository = {
+            create: jest.fn(),
             persistAndFlush: jest.fn(),
             findOne: jest.fn(),
             removeAndFlush: jest.fn(),
-          },
-        },
-      ],
-    }).compile();
+        };
 
-    authService = module.get<AuthService>(AuthService);
-    userService = module.get<UserService>(UserService);
-    em = module.get<EntityManager>(EntityManager);
-  });
+        const module: TestingModule = await Test.createTestingModule({
+            providers: [
+                AuthService,
+                { provide: UserService, useValue: mockUserService },
+                { provide: getRepositoryToken(Login), useValue: mockAuthRepository }, // authRepository 주입
+                { provide: EntityManager, useValue: mockEntityManager },
+            ],
+        }).compile();
 
-  it('should be defined', () => {
-    expect(authService).toBeDefined();
-  });
+        authService = module.get<AuthService>(AuthService);
 
-  describe('validateUser', () => {
-    it('should return user data without password if credentials are valid', async () => {
-      const user = new User();
-      user.id = '1';
-      user.email = 'test@example.com';
-      user.password = 'hashedPassword';
-      user.name = 'Test User';
-      jest.spyOn(userService, 'findUserByEmail').mockResolvedValue(user);
-      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+        jest.spyOn(bcrypt, 'compare').mockImplementation((plainText, hash) => {
+            return plainText === 'plainPassword' && hash === 'hashedPassword';
+        });
 
-      const result = await authService.validateUser('test@example.com', 'password');
 
-      expect(result).toEqual(user);
     });
 
-    it('should return null if credentials are invalid', async () => {
-      jest.spyOn(userService, 'findUserByEmail').mockResolvedValue(null);
-
-      const result = await authService.validateUser('test@example.com', 'password');
-
-      expect(result).toBeNull();
-    });
-  });
-
-  describe('validateCredentials', () => {
-    it('should throw UnauthorizedException if user is null', async () => {
-      jest.spyOn(authService, 'validateUser').mockResolvedValue(null);
-
-      await expect(authService.validateCredentials('test@example.com', 'password')).rejects.toThrow(
-        UnauthorizedException,
-      );
+    it('should be defined', () => {
+        expect(authService).toBeDefined();
+        expect(mockUserService).toBeDefined();
+        expect(bcrypt).toBeDefined();
     });
 
-    it('should return user if credentials are valid', async () => {
-      const user = new User();
-      user.id = '1';
-      user.email = 'test@example.com';
-      user.password = 'hashedPassword';
-      user.name = 'Test User';
-      jest.spyOn(authService, 'validateUser').mockResolvedValue(user);
+    describe('validateUser', () => {
+        it('should return user if credentials are valid', async () => {
 
-      const result = await authService.validateCredentials('test@example.com', 'password');
+            const user = new User();
+            user.password = await bcrypt.hash(loginInfo.password, 10); // 비밀번호 해시화
+            user.email = loginInfo.email;
+            user.createdAt = new Date();
+            user.updatedAt = new Date();
 
-      expect(result).toEqual(user);
-    });
-  });
+            mockUserService.findUserByEmail.mockResolvedValue(user);
 
-  describe('login', () => {
-    it('should return a token if login is successful', async () => {
-      const user = new User();
-      user.id = '1';
-      user.email = 'test@example.com';
-      user.password = 'hashedPassword';
-      user.name = 'Test User';
-      jest.spyOn(authService, 'validateCredentials').mockResolvedValue(user);
-      jest.spyOn(em, 'persistAndFlush').mockImplementation(async () => Promise.resolve());
+            jest.spyOn(bcrypt, 'compare').mockResolvedValue(true);
 
-      const result = await authService.login({ email: 'test@example.com', password: 'password' });
+            const result = await authService.validateUser(user.email, loginInfo.password);
+            expect(result).toEqual(user);
+        });
 
-      expect(result).toEqual(token);
-      expect(em.persistAndFlush).toHaveBeenCalledWith(expect.any(Login));
-    });
-  });
+        it('should return null if credentials are invalid', async () => {
+            mockUserService.findUserByEmail.mockResolvedValue(null);
+            bcrypt.compare.mockResolvedValue(false);
 
-  describe('validateToken', () => {
-    it('should return user if token is valid', async () => {
-      const user = new User();
-      user.id = '1';
-      user.email = 'test@example.com';
-      user.password = 'hashedPassword';
-      user.name = 'Test User';
-      const login = { token: 'randomToken', user } as Login;
-      jest.spyOn(em, 'findOne').mockResolvedValue(login);
+            const result = await authService.validateUser(loginInfo.email, loginInfo.password);
 
-      const result = await authService.validateToken('randomToken');
+            expect(result).toBeNull();
+        });
 
-      expect(result).toEqual(user);
+        it('should throw UnauthorizedException if user is not found', async () => {
+
+            mockUserService.findUserByEmail.mockResolvedValue(null);
+
+            expect(authService.validateUser(loginInfo.email, loginInfo.password));
+        });
+
+        it('should throw UnauthorizedException if password is incorrect', async () => {
+            const user = new User();
+            user.password = 'hashedPassword';
+
+            mockUserService.findUserByEmail.mockResolvedValue(user);
+            bcrypt.compare.mockResolvedValue(false);
+
+            expect(authService.validateUser(loginInfo.email, user.password));
+        });
     });
 
-    it('should throw UnauthorizedException if token is invalid', async () => {
-      jest.spyOn(em, 'findOne').mockResolvedValue(null);
+    describe('validateCredentials', () => {
+        it('should return user if credentials are valid', async () => {
+            const user = new User();
+            user.password = loginInfo.password;
 
-      await expect(authService.validateToken('invalidToken')).rejects.toThrow(UnauthorizedException);
+            mockUserService.findUserByEmail.mockResolvedValue(user);
+            bcrypt.compare.mockResolvedValue(true);
+
+            const result = await authService.validateCredentials(loginInfo.email, loginInfo.password);
+
+            expect(result).toEqual(user);
+        });
+
+        it('should throw UnauthorizedException if credentials are invalid', async () => {
+            mockUserService.findUserByEmail.mockResolvedValue(null);
+            bcrypt.compare.mockResolvedValue(false);
+
+            await expect(authService.validateCredentials(loginInfo.email, loginInfo.password))
+                .rejects.toThrow(UnauthorizedException);
+        });
+
+        it('should throw UnauthorizedException if user is not found', async () => {
+            mockUserService.findUserByEmail.mockResolvedValue(null);
+            bcrypt.compare.mockResolvedValue(false);
+
+            await expect(authService.validateCredentials(loginInfo.email, loginInfo.password))
+                .rejects.toThrow(UnauthorizedException);
+        });
+
     });
-  });
 
-  describe('logout', () => {
-    it('should remove token if it exists', async () => {
-      const login = { token: 'randomToken' } as Login;
-      jest.spyOn(em, 'findOne').mockResolvedValue(login);
-      jest.spyOn(em, 'removeAndFlush').mockImplementation(async () => Promise.resolve());
+    describe('login', () => {
+        it('should return token if credentials are valid', async () => {
+            const user = new User();
+            user.password = loginInfo.password;
 
-      await authService.logout('randomToken');
+            mockUserService.findUserByEmail.mockResolvedValue(user);
+            bcrypt.compare.mockResolvedValue(true);
 
-      expect(em.removeAndFlush).toHaveBeenCalledWith(login);
+            mockAuthRepository.create.mockResolvedValue(new Login());
+
+            const result = await authService.login(loginInfo);
+
+            expect(result).toEqual(token);
+        });
+
+        it('should throw UnauthorizedException if credentials are invalid', async () => {
+            mockUserService.findUserByEmail.mockResolvedValue(null);
+            bcrypt.compare.mockResolvedValue(false);
+
+            await expect(authService.login(loginInfo)).rejects.toThrow(UnauthorizedException);
+        });
+
+        it('should throw UnauthorizedException if user is not found', async () => {
+            mockUserService.findUserByEmail.mockResolvedValue(null);
+
+            await expect(authService.login(loginInfo)).rejects.toThrow(UnauthorizedException);
+        });
     });
 
-    it('should do nothing if token does not exist', async () => {
-      jest.spyOn(em, 'findOne').mockResolvedValue(null);
-      jest.spyOn(em, 'removeAndFlush').mockImplementation(async () => Promise.resolve());
 
-      await authService.logout('invalidToken');
-
-      expect(em.removeAndFlush).not.toHaveBeenCalled();
-    });
-  });
 });

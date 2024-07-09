@@ -1,6 +1,7 @@
 import { Options, SqliteDriver } from "@mikro-orm/sqlite";
 import { TsMorphMetadataProvider } from "@mikro-orm/reflection";
 import { Migrator } from '@mikro-orm/migrations';
+import { ExtendedEntityRepository } from "./common/repositories/extended-entity-repository";
 
 const config: Options = {
     driver: SqliteDriver,
@@ -13,12 +14,11 @@ const config: Options = {
     migrations: {
         tableName: 'migrations', // name of database table with log of executed transactions
         path: process.cwd() + '/migrations', // path to folder with migration files
-        glob: '!(*.d).{js,ts}', // how to match migration files (all .js and .ts files, but not .d.ts)
         transactional: true, // run each migration inside transaction
         disableForeignKeys: true, // try to disable foreign_key_checks (or equivalent)
-        allOrNothing: true, // run all migrations in current batch in master transaction
         emit: 'ts', // migration generation mode
       },
+    entityRepository: ExtendedEntityRepository
 };
 
 export default config;

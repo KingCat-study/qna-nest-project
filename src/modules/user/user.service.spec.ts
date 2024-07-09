@@ -1,151 +1,151 @@
-import { EntityManager, EntityRepository } from '@mikro-orm/core';
 import { getRepositoryToken } from '@mikro-orm/nestjs';
-import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import * as bcrypt from 'bcrypt';
 import { CreateUserDto } from './dtos/create-request.dto';
-import { toCreateUserResponseDto, toFindAllUsersResponseDto } from './dtos/dto.mapper';
+import { toCreateUserResponseDto } from './dtos/dto.mapper';
 import { UserRole } from './entities/user-role.enum';
 import { User } from './entities/user.entity';
 import { UserService } from './user.service';
+import { BadRequestException } from '@nestjs/common';
 
 jest.mock('bcrypt');
 
 describe('UserService', () => {
-  let userService: UserService;
-  let userRepository: EntityRepository<User>;
-  let em: EntityManager;
+    let userService: UserService;
+    let mockUserRepository;
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        UserService,
-        {
-          provide: getRepositoryToken(User),
-          useValue: {
+    const mockUser: User = {
+        id: '1',
+        name: 'Test User',
+        email: 'test@example.com',
+        password: 'password123',
+        role: UserRole.USER,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+    };
+
+    beforeEach(async () => {
+        mockUserRepository = {
             create: jest.fn(),
+            persistAndFlush: jest.fn(),
             findOne: jest.fn(),
-            findOneOrFail: jest.fn(),
             findAll: jest.fn(),
-            persistAndFlush: jest.fn(),
+            findOneOrFail: jest.fn(),
             removeAndFlush: jest.fn(),
-          },
-        },
-        {
-          provide: EntityManager,
-          useValue: {
-            persistAndFlush: jest.fn(),
-            removeAndFlush: jest.fn(),
-          },
-        },
-      ],
-    }).compile();
+        };
 
-    userService = module.get<UserService>(UserService);
-    userRepository = module.get<EntityRepository<User>>(getRepositoryToken(User));
-    em = module.get<EntityManager>(EntityManager);
-  });
+        const module: TestingModule = await Test.createTestingModule({
+            providers: [
+                UserService,
+                { provide: getRepositoryToken(User), useValue: mockUserRepository },
+            ],
+        }).compile();
 
-  it('should be defined', () => {
-    expect(userService).toBeDefined();
-  });
-
-  describe('createUser', () => {
-    it('should create a new user', async () => {
-      const createUserDto: CreateUserDto = { name: 'John Doe', email: 'john.doe@example.com', password: 'password', role: UserRole.USER };
-      const hashedPassword = 'hashedPassword'; // 모킹된 해시 비밀번호
-      const user = new User();
-      user.id = '1';
-      user.name = createUserDto.name;
-      user.email = createUserDto.email;
-      user.password = hashedPassword;
-      user.role = createUserDto.role;
-      user.createdAt = new Date();
-      user.updatedAt = new Date();
-
-      (bcrypt.hash as jest.Mock).mockResolvedValue(hashedPassword);
-      jest.spyOn(userRepository, 'create').mockReturnValue(user);
-      jest.spyOn(em, 'persistAndFlush').mockResolvedValue();
-      jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
-
-      const result = await userService.createUser(createUserDto);
-
-      expect(result).toEqual(toCreateUserResponseDto(user));
-      expect(userRepository.create).toHaveBeenCalledWith({ name: createUserDto.name, email: createUserDto.email, password: hashedPassword, role: createUserDto.role });
-      expect(em.persistAndFlush).toHaveBeenCalledWith(user);
+        userService = module.get<UserService>(UserService);
     });
 
-    it('should throw BadRequestException if email is already in use', async () => {
-      const createUserDto: CreateUserDto = { name: 'John Doe', email: 'john.doe@example.com', password: 'password', role: UserRole.USER };
-
-      jest.spyOn(userRepository, 'findOne').mockResolvedValue(new User());
-
-      await expect(userService.createUser(createUserDto)).rejects.toThrow(BadRequestException);
-    });
-  });
-
-  describe('findUserByEmail', () => {
-    it('should return a user if found', async () => {
-      const user = new User();
-      user.email = 'john.doe@example.com';
-
-      jest.spyOn(userRepository, 'findOne').mockResolvedValue(user);
-
-      const result = await userService.findUserByEmail('john.doe@example.com');
-
-      expect(result).toEqual(user);
-      expect(userRepository.findOne).toHaveBeenCalledWith({ email: 'john.doe@example.com' });
+    it('should be defined', () => {
+        expect(userService).toBeDefined();
     });
 
-    it('should return null if user is not found', async () => {
-      jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
+    describe('createUser', () => {
+        it('should create a new user', async () => {
+            const createUserDto: CreateUserDto = {
+                name: 'Test User',
+                email: 'test@example.com',
+                password: 'password123',
+                role: UserRole.USER,
+            };
 
-      const result = await userService.findUserByEmail('john.doe@example.com');
+            const hashedPassword = 'hashedPassword';
+            bcrypt.hash.mockResolvedValue(hashedPassword);
+            mockUserRepository.create.mockReturnValue(mockUser);
+            jest.spyOn(userService, 'ensureUniqueEmail').mockResolvedValue();
 
-      expect(result).toBeNull();
-      expect(userRepository.findOne).toHaveBeenCalledWith({ email: 'john.doe@example.com' });
+            const result = await userService.createUser(createUserDto);
+
+            expect(userService.ensureUniqueEmail).toHaveBeenCalledWith(createUserDto.email);
+            expect(mockUserRepository.create).toHaveBeenCalledWith({
+                ...createUserDto,
+                password: hashedPassword,
+            });
+            expect(mockUserRepository.persistAndFlush).toHaveBeenCalledWith(mockUser);
+            expect(bcrypt.hash).toHaveBeenCalledWith(createUserDto.password, 10);
+            expect(result).toEqual(toCreateUserResponseDto(mockUser));
+        });
+
+        it('should throw an error if email is already in use', async () => {
+            const createUserDto: CreateUserDto = {
+                name: 'Test User',
+                email: 'test@example.com',
+                password: 'password123',
+                role: UserRole.USER,
+            }
+
+            jest.spyOn(userService, 'ensureUniqueEmail').mockRejectedValue(new BadRequestException('Email already in use'));
+            await expect(userService.createUser(createUserDto)).rejects.toThrow(new BadRequestException('Email already in use'));
+        });
     });
-  });
 
-  describe('deleteUser', () => {
-    it('should delete a user by id', async () => {
-      const user = new User();
-      user.id = '1';
+    describe('ensureUniqueEmail', () => {
+        it('should throw an error if email is already in use', async () => {
+            mockUserRepository.findOne.mockResolvedValue(mockUser);
 
-      jest.spyOn(userRepository, 'findOneOrFail').mockResolvedValue(user);
-      jest.spyOn(em, 'removeAndFlush').mockResolvedValue();
+            await expect(userService.ensureUniqueEmail(mockUser.email)).rejects.toThrow(new BadRequestException('Email already in use'));
+        });
 
-      await userService.deleteUser('1');
+        it('should not throw an error if email is not in use', async () => {
+            mockUserRepository.findOne.mockResolvedValue(null);
 
-      expect(userRepository.findOneOrFail).toHaveBeenCalledWith('1');
-      expect(em.removeAndFlush).toHaveBeenCalledWith(user);
+            await expect(userService.ensureUniqueEmail(mockUser.email)).resolves.not.toThrow();
+        });
     });
-  });
 
-  describe('findAllUser', () => {
-    it('should return an array of users', async () => {
-      const user1 = new User();
-      user1.id = '1';
-      user1.name = 'John Doe';
-      user1.email = 'john.doe@example.com';
-      user1.role = UserRole.USER;
-      user1.createdAt = new Date();
-      user1.updatedAt = new Date();
+    describe('findAllUser', () => {
+        it('should return all users', async () => {
+            mockUserRepository.findAll.mockResolvedValue([mockUser]);
 
-      const user2 = new User();
-      user2.id = '2';
-      user2.name = 'Jane Doe';
-      user2.email = 'jane.doe@example.com';
-      user2.role = UserRole.USER;
-      user2.createdAt = new Date();
-      user2.updatedAt = new Date();
+            const result = await userService.findAllUser();
+            console.log(result);
 
-      jest.spyOn(userRepository, 'findAll').mockResolvedValue([user1, user2]);
+            expect(mockUserRepository.findAll).toHaveBeenCalled();
+            expect(result).toEqual([
+                {
+                id: mockUser.id,
+                name: mockUser.name,
+                email: mockUser.email,
+                role: mockUser.role,
+                createdAt: mockUser.createdAt,
+                updatedAt: mockUser.updatedAt,
+                },
+            ]);
+        });
 
-      const result = await userService.findAllUser();
+        it('should return an empty array if no users are found', async () => {
+            mockUserRepository.findAll.mockResolvedValue([]);
 
-      expect(result).toEqual([toFindAllUsersResponseDto(user1), toFindAllUsersResponseDto(user2)]);
-      expect(userRepository.findAll).toHaveBeenCalled();
+            const result = await userService.findAllUser();
+
+            expect(mockUserRepository.findAll).toHaveBeenCalled();
+            expect(result).toEqual([]);
+        });
     });
-  });
+
+    describe('deleteUser', () => {
+        it('should delete a user', async () => {
+            mockUserRepository.findOneOrFail.mockResolvedValue(mockUser);
+
+            await userService.deleteUser(mockUser.id);
+
+            expect(mockUserRepository.findOneOrFail).toHaveBeenCalledWith(mockUser.id);
+            expect(mockUserRepository.removeAndFlush).toHaveBeenCalledWith(mockUser);
+        });
+
+        it('should throw an error if user is not found', async () => {
+            mockUserRepository.findOneOrFail.mockRejectedValue(new Error('User not found'));
+
+            await expect(userService.deleteUser(mockUser.id)).rejects.toThrow(new Error('User not found'));
+        });
+    });
+
 });
