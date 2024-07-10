@@ -7,103 +7,128 @@ import { UserRole } from '../src/modules/user/entities/user-role.enum';
 import { MikroORM } from '@mikro-orm/sqlite';
 
 describe('UserController (e2e)', () => {
-	let app: INestApplication;
-	let orm: MikroORM;
+    let app: INestApplication;
+    let orm: MikroORM;
 
-	beforeAll(async () => {
-		const moduleFixture: TestingModule = await Test.createTestingModule({
-			imports: [AppModule],
-		}).compile();
+    beforeAll(async () => {
+        const moduleFixture: TestingModule = await Test.createTestingModule({
+            imports: [AppModule],
+        }).compile();
 
-		app = moduleFixture.createNestApplication();
-		app.useGlobalPipes(new ValidationPipe());
-		await app.init();
+        app = moduleFixture.createNestApplication();
+        app.useGlobalPipes(new ValidationPipe());
+        await app.init();
 
-		orm = moduleFixture.get<MikroORM>(MikroORM);
-	});
+        orm = moduleFixture.get<MikroORM>(MikroORM);
+    });
 
-	beforeEach(async () => {
-		const em = orm.em.fork();
-		await em.nativeDelete('User', {});
-	});
+    beforeEach(async () => {
+        const generator = orm.getSchemaGenerator();
+        await generator.clearDatabase();
+    });
 
-	afterAll(async () => {
-		await app.close();
-	});
+    afterAll(async () => {
+        const generator = orm.getSchemaGenerator();
+        await generator.clearDatabase();
 
-	it('/user (POST) should create a new user', async () => {
-		const createUserDto: CreateUserDto = {
-			name: 'Test User',
-			email: 'testuser@example.com',
-			password: 'Password123!',
-			role: UserRole.USER,
-		};
+        await app.close();
+    });
 
-		const response = await request(app.getHttpServer())
-			.post('/user')
-			.send(createUserDto)
-			.expect(201);
+    it('/user (POST) should create a new user', async () => {
+        const createUserDto: CreateUserDto = {
+            name: 'Test User',
+            email: 'testuser@example.com',
+            password: 'Password123!',
+            role: UserRole.USER,
+        };
 
-		expect(response.body).toHaveProperty('name', createUserDto.name);
-		expect(response.body).toHaveProperty('email', createUserDto.email);
-		expect(response.body).toHaveProperty('role', createUserDto.role);
-	});
+        const response = await request(app.getHttpServer())
+            .post('/user')
+            .send(createUserDto)
+            .expect(201);
 
-	it('/user (GET) should return all users', async () => {
+        expect(response.body).toHaveProperty('name', createUserDto.name);
+        expect(response.body).toHaveProperty('email', createUserDto.email);
+        expect(response.body).toHaveProperty('role', createUserDto.role);
+    });
 
-		const createUserDto: CreateUserDto = {
-			name: 'Test User',
-			email: 'testuser@example.com',
-			password: 'Password123!',
-			role: UserRole.ADMIN,
-		};
+    it('/user (GET) should return all users', async () => {
 
-		await request(app.getHttpServer())
-			.post('/user')
-			.send(createUserDto)
-			.expect(201);
+        const createUserDto: CreateUserDto = {
+            name: 'Test User',
+            email: 'testuser@example.com',
+            password: 'Password123!',
+            role: UserRole.ADMIN,
+        };
 
-		const loginResponse = await request(app.getHttpServer())
-			.post('/auth/login')
-			.send({ email: 'testuser@example.com', password: 'Password123!' })
-			.expect(200);
+        await request(app.getHttpServer())
+            .post('/user')
+            .send(createUserDto)
+            .expect(201);
 
-		const token = loginResponse.body.token;
+        const loginResponse = await request(app.getHttpServer())
+            .post('/auth/login')
+            .send({ email: 'testuser@example.com', password: 'Password123!' })
+            .expect(200);
 
-		const response = await request(app.getHttpServer())
-			.get('/user')
-			.set('Authorization', `Bearer ${token}`)
-			.expect(200);
+        const token = loginResponse.headers.authorization;
 
-		expect(Array.isArray(response.body)).toBe(true);
-		expect(response.body.length).toBeGreaterThan(0);
-	});
+        const response = await request(app.getHttpServer())
+            .get('/user')
+            .set('Authorization', `${token}`)
+            .expect(200);
 
-	it('/user/:id (DELETE) should delete a user', async () => {
-		const createUserDto: CreateUserDto = {
-			name: 'Delete User',
-			email: 'deleteuser@example.com',
-			password: 'Password123!',
-			role: UserRole.ADMIN,
-		};
+        expect(Array.isArray(response.body)).toBe(true);
+        expect(response.body.length).toBeGreaterThan(0);
+    });
 
-		const createResponse = await request(app.getHttpServer())
-			.post('/user')
-			.send(createUserDto)
-			.expect(201);
+    it('/user/:id (DELETE) should delete a user', async () => {
+        const deleteUser: CreateUserDto = {
+            name: 'Delete User',
+            email: 'deleteuser@example.com',
+            password: 'Password123!',
+            role: UserRole.ADMIN,
+        };
 
-		const userId = createResponse.body.id;
+        const createUser: CreateUserDto = {
+            name: 'Test User',
+            email: 'testuser@example.com',
+            password: 'Password123!',
+            role: UserRole.ADMIN,
+        };
 
-		const loginResponse = await request(app.getHttpServer())
-			.post('/auth/login')
-			.send({ email: createUserDto.email, password: createUserDto.password })
-			.expect(200);
+        await request(app.getHttpServer())
+            .post('/user')
+            .send(deleteUser)
+            .expect(201);
 
-		const token = loginResponse.body.token;
+        await request(app.getHttpServer())
+            .post('/user')
+            .send(createUser)
+            .expect(201);
 
-		await request(app.getHttpServer())
-			.delete(`/user/${userId}`)
-			.set('Authorization', `Bearer ${token}`)
-			.expect(200);
-	});
+        const loginResponse = await request(app.getHttpServer())
+            .post('/auth/login')
+            .send({ email: createUser.email, password: createUser.password })
+            .expect(200);
+
+        const token = loginResponse.headers.authorization;
+
+        const response = await request(app.getHttpServer())
+            .get('/user?email=' + deleteUser.email)
+            .set('Authorization', `${token}`)
+            .expect(200);
+
+        const responseData = response.body;
+
+        const id = responseData[0].id;
+
+        console.log("should delete a user id", id);
+
+        await request(app.getHttpServer())
+            .delete(`/user/${id}`)
+            .set('Authorization', `${token}`)
+            .expect(200);
+
+    });
 });
