@@ -36,8 +36,9 @@ export class UserService {
         }
     }
 
-    async findAllUser(): Promise<FindAllUsersResponseDto[]> {
-        const users = await this.userRepository.findAll();
+    async findAllUser(email?: string): Promise<FindAllUsersResponseDto[]> {
+        const searchCondition = email ? { email } : {};
+        const users = await this.userRepository.find(searchCondition);
         return users.map(user => toFindAllUsersResponseDto(user));
     }
 

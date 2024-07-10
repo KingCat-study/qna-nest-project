@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { CreateUserDto } from './dtos/create-request.dto';
 import { CreateUserResponseDto } from './dtos/create-response.dto';
 import { FindAllUsersResponseDto } from './dtos/find-all-response.dto';
@@ -29,7 +29,7 @@ export class UserController {
     @Get()
     @UseGuards(AuthGuard, RolesGuard)
     @Roles(UserRole.ADMIN)
-    async findAll(): Promise<FindAllUsersResponseDto[]> {
-      return this.userService.findAllUser();
+    async findAll(@Query('email') email?: string): Promise<FindAllUsersResponseDto[]> {
+      return this.userService.findAllUser(email);
     }
 }
