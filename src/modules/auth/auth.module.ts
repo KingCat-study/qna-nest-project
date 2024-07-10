@@ -3,11 +3,15 @@ import { UserModule } from '../user/user.module';
 import { AuthService } from './auth.service';
 import { AuthGuard } from './guards/auth.guard';
 import { RolesGuard } from './guards/roles.guard';
-import { ExtendedEntityRepository } from 'src/common/repositories/extended-entity-repository';
+import { ExtendedEntityRepository } from '../../common/repositories/extended-entity-repository';
+import { MikroOrmModule } from '@mikro-orm/nestjs';
+import { Login } from './entities/login.entity';
+import { AuthController } from './auth.controller';
 
 @Module({
   imports: [
     forwardRef(() => UserModule),
+    MikroOrmModule.forFeature([Login]),
   ],
   providers: [
     AuthService, 
@@ -16,5 +20,6 @@ import { ExtendedEntityRepository } from 'src/common/repositories/extended-entit
     { provide: 'entityRepository', useClass: ExtendedEntityRepository },
   ],
   exports: [AuthService],
+  controllers: [AuthController],
 })
 export class AuthModule {}
