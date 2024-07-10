@@ -1,38 +1,48 @@
-import { EntityManager, EntityRepository } from '@mikro-orm/core';
 import { InjectRepository } from '@mikro-orm/nestjs';
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ExtendedEntityRepository } from '../../common/repositories/extended-entity-repository';
 import { LikeService } from '../like/like.service';
 import { Question } from '../question/entities/question.entity';
+import { UserRole } from '../user/entities/user-role.enum';
 import { User } from '../user/entities/user.entity';
 import { AnswerResponseDto } from './dtos/answer-response.dto';
 import { CreateAnswerDto } from './dtos/create-answer.dto';
 import { toAnswerResponseDto } from './dtos/dto.mapper';
 import { UpdateAnswerDto } from './dtos/update-answer.dto';
 import { Answer } from './entities/answer.entity';
-import { UserRole } from '../user/entities/user-role.enum';
 
 @Injectable()
 export class AnswerService {
     constructor(
         @InjectRepository(Answer)
-        private readonly answerRepository: EntityRepository<Answer>,
-        private readonly em: EntityManager,
+        private readonly answerRepository: ExtendedEntityRepository<Answer>,
+
+        @InjectRepository(Question)
+        private readonly questionRepository: ExtendedEntityRepository<Question>,
+
         private readonly likeService: LikeService,
     ) { }
 
     async createAnswer(createAnswerDto: CreateAnswerDto, author: User): Promise<AnswerResponseDto> {
-        const question = await this.em.findOneOrFail(Question, createAnswerDto.questionId);
+        const question = await this.questionRepository.findOne(createAnswerDto.questionId);
+        if (!question) {
+            throw new NotFoundException('Question not found');
+        }
+
         const answer = this.answerRepository.create({ content: createAnswerDto.content, author, question });
-        await this.em.persistAndFlush(answer);
+        await this.answerRepository.persistAndFlush(answer);
         return toAnswerResponseDto(answer, false);
     }
 
     async updateAnswer(updateAnswerDto: UpdateAnswerDto, user: User): Promise<AnswerResponseDto> {
-        const answer = await this.answerRepository.findOneOrFail(updateAnswerDto.id, { populate: ['author'] });
+        const answer = await this.answerRepository.findOne(updateAnswerDto.id);
+        if (!answer) {
+            throw new NotFoundException('Answer not found');
+        }
         this.checkPermissions(answer, user, 'update');
 
         answer.content = updateAnswerDto.content;
-        await this.em.persistAndFlush(answer);
+        await this.answerRepository.persistAndFlush(answer);
 
         let isLiked = false;
         if (answer.author.id !== user.id) {
@@ -43,9 +53,12 @@ export class AnswerService {
     }
 
     async deleteAnswer(id: string, user: User): Promise<void> {
-        const answer = await this.answerRepository.findOneOrFail(id, { populate: ['author'] });
+        const answer = await this.answerRepository.findOne(id);
+        if (!answer) {
+            throw new NotFoundException('Answer not found');
+        }
         this.checkPermissions(answer, user, 'delete');
-        await this.em.removeAndFlush(answer);
+        await this.answerRepository.removeAndFlush(answer);
     }
 
     async findAllAnswersByQuestion(questionId: string, user?: User): Promise<AnswerResponseDto[]> {
