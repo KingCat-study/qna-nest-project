@@ -1,4 +1,3 @@
-import { EntityManager } from '@mikro-orm/core';
 import { getRepositoryToken } from '@mikro-orm/nestjs';
 import { ExecutionContext, INestApplication, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -28,33 +27,11 @@ describe('LikeController (e2e)', () => {
         create: jest.fn(),
     };
 
-    const mockEntityManager: jest.Mocked<EntityManager> = {
-        findOneOrFail: jest.fn(),
-        persistAndFlush: jest.fn(),
-        removeAndFlush: jest.fn(),
-        getRepository: jest.fn().mockReturnValue(mockLikeRepository),
-    } as any;
-
-
-    // const mockAuthGuard = {
-    //     canActivate: jest.fn((context: ExecutionContext) => {
-    //         const request = context.switchToHttp().getRequest();
-    //         const token = request.headers['authorization']; // 토큰 추출 (실제 방식에 맞게 수정)
-
-    //         if (token === 'valid_token') { // 유효한 토큰인 경우
-    //             request.user = mockUser;
-    //             return true;
-    //         } else {
-    //             return false; // 유효하지 않은 토큰인 경우
-    //         }
-    //     }),
-    // };
-
     const mockAuthGuard = {
         canActivate: jest.fn((context: ExecutionContext) => {
             const request = context.switchToHttp().getRequest();
             request.user = mockUser;
-            return true; 
+            return true;
         }),
     };
 
@@ -107,19 +84,15 @@ describe('LikeController (e2e)', () => {
         });
 
         it('should handle 404 Not Found when question is not found', async () => {
-            const questionId = 'nonexistent_id';
-            
-            jest
-                .spyOn(mockEntityManager, 'findOneOrFail')
-                .mockRejectedValue(new NotFoundException());
+            const questionId = '2';
+
+            jest.spyOn(likeService, 'toggleLikeQuestion').mockRejectedValue(new NotFoundException('Question not found'));
 
             await request(app.getHttpServer())
                 .patch(`/like/question/${questionId}`)
                 .expect(404); // Expect Not Found
         });
 
-        // ... other error scenarios for toggleLikeQuestion
     });
 
-    // ... (tests for toggleLikeAnswer)
 });
