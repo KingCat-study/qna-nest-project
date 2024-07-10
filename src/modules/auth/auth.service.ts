@@ -58,7 +58,8 @@ export class AuthService {
     }
 
     async logout(token: string) {
-        const login = await this.authRepository.findOne({ token });
+        const bearerReplacetoken = token.replace('Bearer ', '');
+        const login = await this.authRepository.findOne({ token : bearerReplacetoken});
         if (login) {
             await this.authRepository.removeAndFlush(login);
         }
