@@ -4,6 +4,7 @@
 /build
 /migrations
 /temp 
+/test/temp
 
 # Logs
 logs
