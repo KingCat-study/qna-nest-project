@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { HttpStatus, INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { CreateUserDto } from '../src/modules/user/dtos/create-request.dto';
@@ -45,7 +45,7 @@ describe('UserController (e2e)', () => {
         const response = await request(app.getHttpServer())
             .post('/user')
             .send(createUserDto)
-            .expect(201);
+            .expect(HttpStatus.CREATED);
 
         expect(response.body).toHaveProperty('name', createUserDto.name);
         expect(response.body).toHaveProperty('email', createUserDto.email);
@@ -64,19 +64,19 @@ describe('UserController (e2e)', () => {
         await request(app.getHttpServer())
             .post('/user')
             .send(createUserDto)
-            .expect(201);
+            .expect(HttpStatus.CREATED);
 
         const loginResponse = await request(app.getHttpServer())
             .post('/auth/login')
             .send({ email: 'testuser@example.com', password: 'Password123!' })
-            .expect(200);
+            .expect(HttpStatus.OK);
 
         const token = loginResponse.headers.authorization;
 
         const response = await request(app.getHttpServer())
             .get('/user')
             .set('Authorization', `${token}`)
-            .expect(200);
+            .expect(HttpStatus.OK);
 
         expect(Array.isArray(response.body)).toBe(true);
         expect(response.body.length).toBeGreaterThan(0);
@@ -100,24 +100,24 @@ describe('UserController (e2e)', () => {
         await request(app.getHttpServer())
             .post('/user')
             .send(deleteUser)
-            .expect(201);
+            .expect(HttpStatus.CREATED);
 
         await request(app.getHttpServer())
             .post('/user')
             .send(createUser)
-            .expect(201);
+            .expect(HttpStatus.CREATED);
 
         const loginResponse = await request(app.getHttpServer())
             .post('/auth/login')
             .send({ email: createUser.email, password: createUser.password })
-            .expect(200);
+            .expect(HttpStatus.OK);
 
         const token = loginResponse.headers.authorization;
 
         const response = await request(app.getHttpServer())
             .get('/user?email=' + deleteUser.email)
             .set('Authorization', `${token}`)
-            .expect(200);
+            .expect(HttpStatus.OK);
 
         const responseData = response.body;
 
@@ -128,7 +128,7 @@ describe('UserController (e2e)', () => {
         await request(app.getHttpServer())
             .delete(`/user/${id}`)
             .set('Authorization', `${token}`)
-            .expect(200);
+            .expect(HttpStatus.OK);
 
     });
 });
