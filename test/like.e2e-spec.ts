@@ -39,12 +39,12 @@ describe('LikeController (e2e)', () => {
         const moduleFixture: TestingModule = await Test.createTestingModule({
             imports: [AppModule],
         })
-            .overrideProvider(getRepositoryToken(Like)).useValue(mockLikeRepository) // Only override the repository
+            .overrideProvider(getRepositoryToken(Like)).useValue(mockLikeRepository) 
             .overrideGuard(AuthGuard).useValue(mockAuthGuard)
             .compile();
 
         app = moduleFixture.createNestApplication();
-        likeService = app.get<LikeService>(LikeService); // Get the actual LikeService
+        likeService = app.get<LikeService>(LikeService); 
 
         await app.init();
     });
@@ -60,7 +60,7 @@ describe('LikeController (e2e)', () => {
 
             jest.spyOn(likeService, 'toggleLikeQuestion').mockResolvedValue(mockResponse);
 
-            const response = await request(app.getHttpServer())
+            await request(app.getHttpServer())
                 .patch(`/like/question/${questionId}`)
                 .expect(200)
                 .expect(mockResponse);
@@ -90,7 +90,7 @@ describe('LikeController (e2e)', () => {
 
             await request(app.getHttpServer())
                 .patch(`/like/question/${questionId}`)
-                .expect(404); // Expect Not Found
+                .expect(404); 
         });
 
     });
