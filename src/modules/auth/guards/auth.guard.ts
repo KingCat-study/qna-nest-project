@@ -14,14 +14,17 @@ export class AuthGuard implements CanActivate {
     const token = request.headers['authorization'];
 
     if (!token) {
+      console.log('AuthGuard Token is missing');
       throw new UnauthorizedException('Token is missing');
     }
 
     try {
-      const user = await this.authService.validateToken(token);
+      const user = await this.authService.validateBearerToken(token);
       request.user = user;
       return true;
     } catch (error) {
+      console.log('AuthGuard Invalid token');
+      console.log(error);
       throw new UnauthorizedException('Invalid token');
     }
   }

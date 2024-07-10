@@ -21,8 +21,8 @@ export class RolesGuard implements CanActivate {
       throw new UnauthorizedException('Token is missing');
     }
 
-    const user = await this.authService.validateToken(token);
-    if (!user || !roles.includes(user.role)) {
+    const user = await this.authService.validateBearerToken(token);
+    if (!user || !roles.includes(UserRole.ADMIN)) {
       throw new UnauthorizedException('You do not have the necessary permissions');
     }
 

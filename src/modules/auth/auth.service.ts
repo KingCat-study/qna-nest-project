@@ -44,6 +44,7 @@ export class AuthService {
 
     async login(loginRequestDto: LoginRequestDto) {
         const { email, password } = loginRequestDto;
+        console.log('loginRequestDto: ', email, password);
         const user = await this.validateCredentials(email, password);
 
         const token = randomBytes(32).toString('hex');
@@ -64,10 +65,16 @@ export class AuthService {
     }
 
     async validateToken(token: string): Promise<any> {
-        const login = await this.authRepository.findOne({ token }, { populate: ['user'] });
+        console.log('validateToken: ', token);
+        const login = await this.authRepository.findOne({ token });
         if (!login) {
             throw new UnauthorizedException('Invalid token');
         }
         return login.user;
     }
+
+    async validateBearerToken(token: string): Promise<User> {
+        const bearerReplacetoken = token.replace('Bearer ', '');
+        return await this.validateToken(bearerReplacetoken);
+      }
 }
